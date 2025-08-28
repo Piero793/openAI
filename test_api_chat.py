@@ -1,23 +1,41 @@
 from openai import OpenAI
+import os
 
-client = OpenAI(api_key="qui inserirai la tua chiave API di openAI")
-chat_history = []
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+chat_history = [
+    {"role": "system", "content": "Sei un assistente cordiale e disponibile."}
+]
 
 def chat_with_openai():
-    chat_history.append({"role": "system", "content": "Usa un tono cordiale"})
-
     while True:
-        user_input = input("Tu:")
-        chat_history.append({"role": "user", "content": user_input})
+        user_input = input("Tu: ")
+        
         if user_input.lower() == "stop":
-            break   
+            print("Chat terminata.")
+            break
+        
+        chat_history.append({"role": "user", "content": user_input})
 
-stream = client.chat.completions.create(
-    model="gpt-3.5-turbo",  #consultare la documentazione di openAI per ulteriori dettagli sul modello da utilizzare
-    messages=chat_history,
-    stream=True
-)
+        try:
+            stream = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=chat_history,
+                stream=True
+            )
+            
+            print("AI: ", end="", flush=True)
+            assistant_response = ""
+            for chunk in stream:
+                if chunk.choices[0].delta.content is not None:
+                    part = chunk.choices[0].delta.content
+                    print(part, end="", flush=True)
+                    assistant_response += part
+            print()
 
-for chunk in stream:
-    if chunk.choices[0].delta is not None:
-        print(chunk.choices[0].delta.content, end="")
+            chat_history.append({"role": "assistant", "content": assistant_response})
+
+        except Exception as e:
+            print(f"Si è verificato un errore: {e}")
+
+chat_with_openai()
